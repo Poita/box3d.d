@@ -1,0 +1,9 @@
+# Build outputs
+native/box3d/build/
+native/libbox3d.a
+native/box3d.lib
+.dub/
+*.a
+*.lib
+box3d-test-*
+examples/box3d_hello
