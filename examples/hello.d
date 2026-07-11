@@ -18,7 +18,8 @@ void main()
     b3WorldDef worldDef = b3DefaultWorldDef();
     worldDef.gravity = b3Vec3(0.0f, -10.0f, 0.0f);
     b3WorldId world = b3CreateWorld(&worldDef);
-    scope (exit) b3DestroyWorld(world);
+    scope (exit)
+        b3DestroyWorld(world);
 
     // Static ground.
     b3BodyDef groundDef = b3DefaultBodyDef();
