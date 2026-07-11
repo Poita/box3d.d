@@ -1,0 +1,16 @@
+root = true
+
+[*.d]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+max_line_length = 120
+
+# dfmt
+dfmt_brace_style = allman
+dfmt_soft_max_line_length = 110
+dfmt_split_operator_at_line_end = false
+dfmt_space_after_cast = true
