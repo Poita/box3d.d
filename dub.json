@@ -1,0 +1,49 @@
+{
+	"name": "box3d",
+	"description": "Cross-platform D bindings for Box3D, the 3D physics engine.",
+	"homepage": "https://github.com/Poita/box3d.d",
+	"license": "MIT",
+	"authors": [
+		"Peter Alexander"
+	],
+	"copyright": "Copyright © 2026 Peter Alexander; Box3D © Erin Catto (MIT)",
+	"targetType": "library",
+	"sourcePaths": [
+		"source"
+	],
+	"importPaths": [
+		"source"
+	],
+	"subPackages": [
+		"./examples"
+	],
+	"configurations": [
+		{
+			"name": "vendored",
+			"comment": "Default: build and statically link the vendored Box3D C source (requires cmake + a C17 compiler).",
+			"preBuildCommands-posix": [
+				"sh $PACKAGE_DIR/native/build.sh"
+			],
+			"preBuildCommands-windows": [
+				"$PACKAGE_DIR/native/build.bat"
+			],
+			"lflags-posix": [
+				"$PACKAGE_DIR/native/libbox3d.a"
+			],
+			"lflags-windows": [
+				"$PACKAGE_DIR/native/box3d.lib"
+			],
+			"libs-linux": [
+				"pthread",
+				"m"
+			]
+		},
+		{
+			"name": "system",
+			"comment": "Link a Box3D library already installed on the system.",
+			"libs": [
+				"box3d"
+			]
+		}
+	]
+}
