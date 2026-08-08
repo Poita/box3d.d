@@ -126,6 +126,67 @@ aliases `b3Vec3` and `b3WorldTransform` aliases `b3Transform`. Box3D emits a lin
 error if an application and library disagree on precision, so a mismatch cannot
 go unnoticed.
 
+## Determinism
+
+Box3D simulates bit-identically across operating systems and CPU architectures,
+and the `determinism` workflow verifies it on every push over Linux x64, Windows
+x64, macOS arm64 and macOS x64.
+
+Box3D itself does most of the work. The solver calls no transcendental
+functions: `sinf`, `cosf` and `atan2f` are replaced by in-tree polynomial
+approximations, approximate reciprocals are banned from the SIMD paths, and the
+SIMD width is pinned to 4 on SSE2, NEON and the scalar fallback alike. What
+remains is `+ - * /` and `sqrt`, which IEEE 754 specifies to the bit. Ordering
+is deterministic too: contact creation, broadphase pairs, island tie-breaks and
+sensor events all have a defined order independent of worker scheduling.
+
+That leaves the build, which this package pins in `native/box3d/CMakeLists.txt`:
+
+- **`-ffp-contract=off`** (`/fp:precise` on MSVC). Without it, `a + s * b` —
+  `b3MulAdd`, the solver's hottest expression — fuses into a single `fmadd` on
+  arm64 and rounds once where x86-64 rounds twice. This is not a subtle effect:
+  building with contraction enabled changes the state hash from **frame 0**.
+- **No fast math**, which would permit reassociation.
+- **SSE2 on 32-bit x86**, so intermediates are not held at x87's 80-bit width.
+
+Two constraints are yours to hold, because they are process state that no
+library can own:
+
+- **Do not build your application with `-ffast-math` or `/fp:fast`.** On Linux,
+  GCC's `-ffast-math` links `crtfastmath.o`, which enables flush-to-zero for the
+  entire process — including Box3D's threads. Denormal handling must match on
+  every platform, so if you set FTZ/DAZ (x86) or `FPCR.FZ` (arm64), set it
+  everywhere or nowhere.
+- **Do not pass `-march=native` or `-mfma`** when building the vendored library.
+  Enabling FMA on x86-64 lets the compiler contract there too, diverging from
+  other x86-64 builds.
+
+### Checking it yourself
+
+```sh
+# Write a per-frame hash of every body's transform and velocity.
+dub run box3d:determinism -- --out hashes.txt
+
+# Record a run, then replay it and check against the embedded state hashes.
+dub run box3d:determinism -- --record scene.b3rec
+dub run box3d:determinism -- --replay scene.b3rec
+```
+
+Hash files from two machines should be byte-identical; the first differing line
+is the frame where they parted. A recording carries the hashes computed by the
+machine that produced it, so copying one to another machine and replaying it
+checks against Box3D's own internal hash rather than the harness's.
+
+Note that this gates the D bindings and the C library together, since the inline
+math in `source/box3d/math_functions.d` is compiled by your D compiler rather
+than the C one. LDC does not contract floating-point expressions by default, so
+it agrees with the pinned C flags; if you use GDC, verify before relying on it.
+
+Multithreaded determinism is not yet covered. Box3D is written for it and
+`b3RecPlayer_SetWorkerCount` exists to test it, but `b3ValidateReplay` documents
+its `workerCount` parameter as reserved in this version, so the harness records
+and replays with a single worker.
+
 ## Updating the vendored Box3D
 
 The Box3D C source lives in `native/box3d` (`include/` + `src/` + a minimal

@@ -15,7 +15,8 @@
 		"source"
 	],
 	"subPackages": [
-		"./examples"
+		"./examples",
+		"./tools"
 	],
 	"configurations": [
 		{

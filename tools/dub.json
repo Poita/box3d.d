@@ -1,0 +1,11 @@
+{
+	"name": "determinism",
+	"description": "Cross-platform determinism harness for Box3D.",
+	"targetType": "executable",
+	"sourceFiles": ["determinism.d"],
+	"sourcePaths": [],
+	"importPaths": [],
+	"dependencies": {
+		"box3d": { "path": "../" }
+	}
+}
