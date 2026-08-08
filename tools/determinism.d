@@ -264,7 +264,9 @@ void runScene(string outPath, string recordPath, int frames)
 
     b3BodyId[] bodies = buildScene(world);
 
-    File output = outPath.length ? File(outPath, "w") : stdout;
+    // Binary mode: the hash file is compared byte for byte against other
+    // platforms', and Windows text mode would translate every \n to \r\n.
+    File output = outPath.length ? File(outPath, "wb") : stdout;
     // dt is printed as raw bits rather than %a: the header is compared verbatim
     // across platforms, so it must not depend on float formatting.
     output.writefln("# box3d determinism hashes: %d bodies, %d frames, dt=0x%08x, substeps=%d",

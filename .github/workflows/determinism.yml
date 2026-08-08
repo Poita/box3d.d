@@ -84,12 +84,15 @@ jobs:
               echo "MATCH    $file is bit-identical to $reference"
             else
               status=1
+              # Captured once, and every grep is the last stage of its pipeline:
+              # under `set -o pipefail` a SIGPIPE from `... | head` would abort
+              # the step before it could report anything.
+              changes=$(diff "$reference" "$file" || true)
               echo "DIVERGED $file differs from $reference"
               echo "  first differing frame:"
-              # Field 1 of the first differing line is the frame number.
-              diff "$reference" "$file" | grep '^<' | head -n 1 | sed 's/^/    /'
-              diff "$reference" "$file" | grep '^>' | head -n 1 | sed 's/^/    /'
-              echo "  differing frames: $(diff "$reference" "$file" | grep -c '^<')"
+              printf '%s\n' "$changes" | grep -m1 '^<' | sed 's/^/    /' || true
+              printf '%s\n' "$changes" | grep -m1 '^>' | sed 's/^/    /' || true
+              echo "  differing frames: $(printf '%s\n' "$changes" | grep -c '^<' || true)"
             fi
           done
 
