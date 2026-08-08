@@ -25,6 +25,14 @@ else()
     target_compile_options(box3d PRIVATE -Wall)
 endif()
 
+# Link the static CRT to match what LDC links by default. With CMake's default
+# dynamic CRT the C objects reference the UCRT through import symbols while the
+# D linker supplies the static libucrt, leaving b3Alloc's _aligned_malloc and
+# b3Free's _aligned_free unresolved.
+if(MSVC)
+    set_property(TARGET box3d PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+endif()
+
 # Cross-platform determinism.
 #
 # The solver uses only + - * / and sqrt, all of which IEEE 754 specifies bit-exactly,

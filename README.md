@@ -130,7 +130,7 @@ go unnoticed.
 
 Box3D simulates bit-identically across operating systems and CPU architectures,
 and the `determinism` workflow verifies it on every push over Linux x64, Windows
-x64, macOS arm64 and macOS x64.
+x64 and macOS arm64 — three operating systems and both architectures.
 
 Box3D itself does most of the work. The solver calls no transcendental
 functions: `sinf`, `cosf` and `atan2f` are replaced by in-tree polynomial
