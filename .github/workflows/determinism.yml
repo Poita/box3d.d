@@ -1,0 +1,127 @@
+# Verifies that Box3D simulates bit-identically across operating systems and CPU
+# architectures.
+#
+# Two independent checks run against the same fixed scene:
+#
+#   compare-hashes  Each platform writes a per-frame FNV-1a hash of every body's
+#                   transform and velocity. The files must be byte-identical.
+#                   A diff names the exact frame where two platforms parted ways.
+#
+#   cross-replay    Each platform replays the recording produced on Linux. A
+#                   recording carries the state hashes computed by the machine
+#                   that made it, so this re-simulates on foreign hardware and
+#                   checks against Box3D's own internal hash rather than ours.
+name: determinism
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    name: simulate (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Never cancel siblings: a divergence is only diagnosable with every
+      # platform's hashes in hand.
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-x64
+          - os: windows-latest
+            label: windows-x64
+          - os: macos-latest
+            label: macos-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ldc-latest
+
+      - name: Simulate and hash
+        run: dub run box3d:determinism -q -- --out hashes-${{ matrix.label }}.txt --record recording-${{ matrix.label }}.b3rec
+
+      - name: Self-replay
+        # Sanity check before comparing platforms: replaying a recording on the
+        # machine that made it must reproduce its own hashes. If this fails the
+        # engine is not even deterministic against itself and cross-platform
+        # results are meaningless.
+        run: dub run box3d:determinism -q -- --replay recording-${{ matrix.label }}.b3rec
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: determinism-${{ matrix.label }}
+          path: |
+            hashes-${{ matrix.label }}.txt
+            recording-${{ matrix.label }}.b3rec
+
+  compare-hashes:
+    name: compare hashes across platforms
+    needs: simulate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Diff every platform against linux-x64
+        shell: bash
+        run: |
+          cd artifacts
+          reference=hashes-linux-x64.txt
+          status=0
+
+          for file in hashes-*.txt; do
+            [ "$file" = "$reference" ] && continue
+            if diff -q "$reference" "$file" >/dev/null; then
+              echo "MATCH    $file is bit-identical to $reference"
+            else
+              status=1
+              # Captured once, and every grep is the last stage of its pipeline:
+              # under `set -o pipefail` a SIGPIPE from `... | head` would abort
+              # the step before it could report anything.
+              changes=$(diff "$reference" "$file" || true)
+              echo "DIVERGED $file differs from $reference"
+              echo "  first differing frame:"
+              printf '%s\n' "$changes" | grep -m1 '^<' | sed 's/^/    /' || true
+              printf '%s\n' "$changes" | grep -m1 '^>' | sed 's/^/    /' || true
+              echo "  differing frames: $(printf '%s\n' "$changes" | grep -c '^<' || true)"
+            fi
+          done
+
+          exit $status
+
+  cross-replay:
+    name: cross-replay (${{ matrix.label }})
+    needs: simulate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows-x64
+          - os: macos-latest
+            label: macos-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ldc-latest
+
+      - name: Fetch the Linux recording
+        uses: actions/download-artifact@v4
+        with:
+          name: determinism-linux-x64
+
+      - name: Replay the Linux recording here
+        run: dub run box3d:determinism -q -- --replay recording-linux-x64.b3rec

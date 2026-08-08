@@ -7,3 +7,6 @@ native/box3d.lib
 *.lib
 box3d-test-*
 examples/box3d_hello
+tools/box3d_determinism
+*.b3rec
+hashes-*.txt
