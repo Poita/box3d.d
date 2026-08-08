@@ -7,7 +7,7 @@ Box3D is written in C with a clean C API, which makes these bindings a thin,
 `@nogc nothrow` translation of that API. The C source is vendored and built from
 source, so the package is self-contained: no system Box3D install required.
 
-- **box3d.d version:** 0.1.0
+- **box3d.d version:** 1.0.0
 - **Box3D version:** 0.1.0 (vendored under `native/box3d`)
 - **License:** MIT (both these bindings and Box3D itself)
 - **Precision:** single precision (the default Box3D build)
@@ -24,7 +24,7 @@ or in your `dub.json`:
 
 ```json
 "dependencies": {
-    "box3d": "~>0.1"
+    "box3d": "~>1.0"
 }
 ```
 
