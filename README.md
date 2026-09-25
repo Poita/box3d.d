@@ -187,12 +187,45 @@ Multithreaded determinism is not yet covered. Box3D is written for it and
 its `workerCount` parameter as reserved in this version, so the harness records
 and replays with a single worker.
 
+## World snapshots
+
+`box3d.snapshot` saves the complete simulation state of a world and restores it
+in place — into the same world or another one — so stepping resumes
+bit-identically to the original run. That is the building block for rewind,
+rollback netcode and seekable replays of a larger deterministic simulation.
+
+```d
+auto store = b3CreateSnapshotStore();       // shared geometry registry, thread safe
+ubyte* image;
+const size = b3World_SaveSnapshot(world, store, &image);
+// ... step on ...
+b3World_RestoreSnapshot(world, store, image, size); // back to the saved step
+b3FreeSnapshot(image, size);
+```
+
+- The image carries everything the solver reads: bodies, shapes, contacts with
+  their warm-start impulses, islands, sleep timers, the broad-phase trees and
+  the id pools. Body, shape and joint user data ride along as raw pointer
+  values.
+- Hull, mesh, height field and compound geometry is interned once in the store
+  and referenced by id, so snapshots of a world over a large height field stay
+  small. A restored world's mesh and height field shapes point into the store:
+  destroy the store only after every world restored from it.
+- The world keeps its id across a restore. Ids from another world are valid
+  once their `world0` names the restoring world (`worldId.index1 - 1`).
+
+Box3D keeps its serializer internal — its recording player uses it for seek
+keyframes — so these functions are this package's own thin wrapper over it,
+compiled from `native/box3d_ext/`, outside the vendored tree.
+
 ## Updating the vendored Box3D
 
 The Box3D C source lives in `native/box3d` (`include/` + `src/` + a minimal
 `CMakeLists.txt`). The upstream commit is recorded in
 `native/box3d/COMMIT.txt`. To update, replace `include/` and `src/` from a newer
-Box3D checkout and re-generate any changed bindings.
+Box3D checkout and re-generate any changed bindings. `native/box3d_ext/` holds this
+package's additions (the snapshot wrapper); it includes Box3D's internal headers,
+so check it still builds against the new `src/`.
 
 ## Development
 

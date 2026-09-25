@@ -5,6 +5,10 @@ cmake_minimum_required(VERSION 3.16)
 project(box3d_native LANGUAGES C)
 
 file(GLOB BOX3D_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+# Additions to the vendored library, kept outside src/ so a Box3D update is a
+# plain replace of include/ and src/.
+file(GLOB BOX3D_EXT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../box3d_ext/*.c")
+list(APPEND BOX3D_SOURCES ${BOX3D_EXT_SOURCES})
 
 add_library(box3d STATIC ${BOX3D_SOURCES})
 
