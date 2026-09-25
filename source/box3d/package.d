@@ -16,6 +16,7 @@
       $(LI $(D box3d.collision) — geometry, hulls, meshes, distance, manifolds, dynamic tree)
       $(LI $(D box3d.types) — world/body/shape/joint definitions, events, debug draw)
       $(LI $(D box3d.functions) — the main world/body/shape/joint API)
+      $(LI $(D box3d.snapshot) — in-place world snapshot save/restore)
     )
 +/
 module box3d;
@@ -27,3 +28,4 @@ public import box3d.math_functions;
 public import box3d.collision;
 public import box3d.types;
 public import box3d.functions;
+public import box3d.snapshot;
