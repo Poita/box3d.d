@@ -219,6 +219,10 @@ int b3GetHeight(const(b3MeshData)* mesh);
 
 /// Create a generic height field.
 b3HeightFieldData* b3CreateHeightField(const(b3HeightFieldDef)* data);
+b3HeightFieldData* b3BeginHeightField(const(b3HeightFieldDef)* data, float** decodedHeights);
+void b3BuildHeightFieldRows(b3HeightFieldData* heightField, const(float)* decodedHeights,
+        int rowBegin, int rowEnd);
+b3HeightFieldData* b3FinishHeightField(b3HeightFieldData* heightField, float* decodedHeights);
 
 /// Create a grid as a height field.
 b3HeightFieldData* b3CreateGrid(int rowCount, int columnCount, b3Vec3 scale, bool makeHoles);
