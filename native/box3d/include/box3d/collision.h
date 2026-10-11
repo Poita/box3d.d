@@ -379,6 +379,17 @@ B3_INLINE const uint8_t* b3GetHeightFieldFlags( const b3HeightFieldData* hf )
 /// Create a generic height field.
 B3_API b3HeightFieldData* b3CreateHeightField( const b3HeightFieldDef* data );
 
+/// `b3CreateHeightField` in three steps, so the edge flags (the bulk of the work)
+/// can be built over row ranges on several threads: begin lays out the blob and
+/// hands back the decoded heights; `b3BuildHeightFieldRows` fills the flags of the
+/// cell rows [rowBegin, rowEnd), touching only those cells, so disjoint ranges may
+/// run at once; finish frees the decoded heights and hashes the blob. Covering
+/// every cell row once gives exactly what `b3CreateHeightField` does.
+B3_API b3HeightFieldData* b3BeginHeightField( const b3HeightFieldDef* data, float** decodedHeights );
+B3_API void b3BuildHeightFieldRows( b3HeightFieldData* heightField, const float* decodedHeights, int rowBegin,
+									int rowEnd );
+B3_API b3HeightFieldData* b3FinishHeightField( b3HeightFieldData* heightField, float* decodedHeights );
+
 /// Create a grid as a height field.
 B3_API b3HeightFieldData* b3CreateGrid( int rowCount, int columnCount, b3Vec3 scale, bool makeHoles );
 

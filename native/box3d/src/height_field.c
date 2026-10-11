@@ -99,7 +99,7 @@
 	   21  3  22
  */
 
-b3HeightFieldData* b3CreateHeightField( const b3HeightFieldDef* data )
+b3HeightFieldData* b3BeginHeightField( const b3HeightFieldDef* data, float** decodedHeights )
 {
 	int columnCount = data->countX;
 	int rowCount = data->countZ;
@@ -137,7 +137,6 @@ b3HeightFieldData* b3CreateHeightField( const b3HeightFieldDef* data )
 
 	uint16_t* compressedHeights = (uint16_t*)( (intptr_t)hf + heightsOffset );
 	uint8_t* materialIndices = (uint8_t*)( (intptr_t)hf + materialOffset );
-	uint8_t* flags = (uint8_t*)( (intptr_t)hf + flagsOffset );
 
 	const float* heights = data->heights;
 
@@ -168,7 +167,7 @@ b3HeightFieldData* b3CreateHeightField( const b3HeightFieldDef* data )
 	{
 		decompressedHeights[i] = hf->minHeight + hf->heightScale * compressedHeights[i];
 	}
-	heights = decompressedHeights;
+	*decodedHeights = decompressedHeights;
 
 	if ( data->materialIndices != NULL )
 	{
@@ -189,11 +188,26 @@ b3HeightFieldData* b3CreateHeightField( const b3HeightFieldDef* data )
 	hf->aabb.upperBound =
 		(b3Vec3){ hf->scale.x * ( hf->columnCount - 1 ), hf->scale.y * upperHeightBound, hf->scale.z * ( hf->rowCount - 1 ) };
 
+	return hf;
+}
+
+void b3BuildHeightFieldRows( b3HeightFieldData* hf, const float* decodedHeights, int rowBegin, int rowEnd )
+{
+	int columnCount = hf->columnCount;
+	int rowCount = hf->rowCount;
+	int cellCount = ( columnCount - 1 ) * ( rowCount - 1 );
+	B3_ASSERT( 0 <= rowBegin && rowBegin <= rowEnd && rowEnd <= rowCount - 1 );
+	B3_UNUSED( cellCount );
+
+	const uint8_t* materialIndices = (const uint8_t*)( (intptr_t)hf + hf->materialOffset );
+	uint8_t* flags = (uint8_t*)( (intptr_t)hf + hf->flagsOffset );
+	const float* heights = decodedHeights;
+
 	float cos5Deg = 0.9962f;
 	b3Vec3 scale = hf->scale;
 
-	int triangleIndex = 0;
-	for ( int row = 0; row < rowCount - 1; ++row )
+	int triangleIndex = 2 * rowBegin * ( columnCount - 1 );
+	for ( int row = rowBegin; row < rowEnd; ++row )
 	{
 		for ( int column = 0; column < columnCount - 1; ++column )
 		{
@@ -464,15 +478,26 @@ b3HeightFieldData* b3CreateHeightField( const b3HeightFieldDef* data )
 		}
 	}
 
-	B3_ASSERT( triangleIndex == triangleCount );
+	B3_ASSERT( triangleIndex == 2 * rowEnd * ( columnCount - 1 ) );
+}
 
-	b3Free( decompressedHeights, heightCount * sizeof( float ) );
+b3HeightFieldData* b3FinishHeightField( b3HeightFieldData* hf, float* decodedHeights )
+{
+	b3Free( decodedHeights, hf->columnCount * hf->rowCount * sizeof( float ) );
 
 	// Content hash over the whole blob with the hash field zeroed, like b3HullData/b3MeshData.
 	hf->hash = 0;
 	hf->hash = b3NonZeroHash( b3Hash( B3_HASH_INIT, (const uint8_t*)hf, hf->byteCount ) );
 
 	return hf;
+}
+
+b3HeightFieldData* b3CreateHeightField( const b3HeightFieldDef* data )
+{
+	float* decodedHeights;
+	b3HeightFieldData* hf = b3BeginHeightField( data, &decodedHeights );
+	b3BuildHeightFieldRows( hf, decodedHeights, 0, hf->rowCount - 1 );
+	return b3FinishHeightField( hf, decodedHeights );
 }
 
 _Static_assert( b3_concaveEdge3 == 4 * b3_concaveEdge1, "bit math" );
